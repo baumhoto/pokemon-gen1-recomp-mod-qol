@@ -1,0 +1,3 @@
+*.modpkg
+*.zip
+dist/
