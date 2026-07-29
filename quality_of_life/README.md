@@ -42,4 +42,5 @@ bushes or boulders to activate automatically.
 When facing water, pressing [A] automatically asks whether you want to FISH or SURF.
 When FLY, DIG, FLASH or TELEPORT is available, pressing [SELECT] will let you do that directly.
 Saves countless of button presses and navigating the menu
+
 ![Image Alt Text](images/qol_easy_interactions1.gif) ![Image Alt Text](images/qol_easy_interactions2.gif) ![Image Alt Text](images/qol_easy_interactions3.gif) 
