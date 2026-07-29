@@ -17,22 +17,22 @@ local function read(path)
 end
 
 local modFiles = {
-  ["mods/qol_later_gen/manifest.json"] =
-    read("mods/qol_later_gen/manifest.json"),
-  ["mods/qol_later_gen/main.lua"] = read("mods/qol_later_gen/main.lua"),
-  ["mods/qol_later_gen/transforms.lua"] =
-    read("mods/qol_later_gen/transforms.lua"),
+  ["mods/quality_of_life/manifest.json"] =
+    read("mods/quality_of_life/manifest.json"),
+  ["mods/quality_of_life/main.lua"] = read("mods/quality_of_life/main.lua"),
+  ["mods/quality_of_life/transforms.lua"] =
+    read("mods/quality_of_life/transforms.lua"),
 }
-local run = T.sdk.loadMod("mods/qol_later_gen",
+local run = T.sdk.loadMod("mods/quality_of_life",
   { data = Data, fs = T.sdk.memfs(modFiles) })
 T.eq(#run.errors, 0, "loads clean (" .. tostring(run.errors[1]) .. ")")
-local exports = run.loader.exports.qol_later_gen
-T.check(exports and exports.screenId == "QolLaterGenMenu",
+local exports = run.loader.exports.quality_of_life
+T.check(exports and exports.screenId == "QualityOfLife",
   "exports the submenu screen id")
 
 local loadChunk = loadstring or load
 local transform = assert(loadChunk(modFiles[
-  "mods/qol_later_gen/transforms.lua"]))()
+  "mods/quality_of_life/transforms.lua"]))()
 local transformCalls = {}
 transform({
   exists = function(path) return path == "battle/balls.png" end,
@@ -67,6 +67,7 @@ local game = {
   stack = stack(),
   mods = run.loader,
   save = {
+    inventory = {},
     options = { modOptions = {} },
     pokedex = { seen = { RATTATA = true }, owned = { RATTATA = true } },
   },
@@ -85,29 +86,273 @@ local menu = game.stack:top()
 T.check(menu and menu.screenId == exports.screenId, "opens the custom submenu")
 T.eq(menu.rows[1].value(game), "OFF", "EXP bar defaults off")
 T.eq(menu.rows[2].value(game), "OFF", "indicator defaults off")
+T.eq(menu.rows[3].value(game), "OFF", "Auto HM use defaults off")
+
+local fieldChecks, cuts, strengthChecks, surfChecks = 0, 0, 0, 0
+local fieldResult = "nothing"
+local facingNpc, strengthMon, surfMon
+local facingWater, surfs, fishedWith = false, 0, nil
+local fieldMoveMons = {}
+local flyDest, escapes = nil, 0
+local overworld = {
+  isOverworld = true,
+  map = { id = "PALLET_TOWN", def = { tileset = "OVERWORLD" } },
+  player = { facingCell = function() return 7, 8 end },
+  useCutFieldMove = function()
+    fieldChecks = fieldChecks + 1
+    return fieldResult
+  end,
+  tryCut = function(_, x, y)
+    T.check(x == 7 and y == 8, "Auto HM use targets the facing cell")
+    cuts = cuts + 1
+    return true
+  end,
+  facingIsShoreOrWater = function() return facingWater end,
+  useSurfFieldMove = function()
+    surfChecks = surfChecks + 1
+    return surfMon and "ok" or "no_badge"
+  end,
+  trySurf = function(_, x, y)
+    T.check(x == 7 and y == 8, "Auto SURF targets the facing water")
+    surfs = surfs + 1
+  end,
+  goFishing = function(_, rod) fishedWith = rod end,
+  flyTo = function(_, mapId) flyDest = mapId end,
+  beginTeleportOut = function() escapes = escapes + 1 end,
+  partyKnows = function(_, move)
+    if move == "STRENGTH" then
+      strengthChecks = strengthChecks + 1
+      return strengthMon
+    end
+    return fieldMoveMons[move]
+  end,
+}
+local worldStack = stack()
+worldStack:push(overworld)
+local worldGame = { data = Data, input = input, save = game.save, stack = worldStack }
+run.loader.game = worldGame
+Runtime.emit("world.interacted", { kind = "none" })
+T.eq(fieldChecks, 0, "an unhandled A press does nothing while Auto HM use is off")
+Runtime.emit("world.interacted", { kind = "npc", target = facingNpc })
+T.eq(strengthChecks, 0, "a boulder interaction does nothing while Auto HM use is off")
 
 input.pressed = { right = true }
 menu:update(0)
 input.pressed = {}
-T.eq(game.save.options.modOptions.qol_later_gen.battle_exp_bar, "black",
+T.eq(game.save.options.modOptions.quality_of_life.qol_exp_bar, "black",
   "right cycles the EXP bar to black")
 T.eq(menu.rows[1].value(game), "ON (BLACK)", "submenu refreshes the EXP label")
 menu.index = 2
 input.pressed = { left = true }
 menu:update(0)
 input.pressed = {}
-T.eq(game.save.options.modOptions.qol_later_gen.pokedex_indicator, "red",
+T.eq(game.save.options.modOptions.quality_of_life.qol_caught_indicator, "red",
   "left wraps the indicator from off to red")
 T.eq(menu.rows[2].value(game), "ON (RED)", "submenu refreshes the indicator label")
-T.eq(writes, 2, "submenu changes persist immediately")
+menu.index = 3
+input.pressed = { right = true }
+menu:update(0)
+input.pressed = {}
+T.eq(game.save.options.modOptions.quality_of_life.auto_hm_use, true,
+  "right enables Auto HM use")
+T.eq(menu.rows[3].value(game), "ON", "submenu refreshes the Auto HM use label")
+T.eq(writes, 3, "submenu changes persist immediately")
 
+Runtime.emit("world.interacted", { kind = "sign" })
+T.eq(fieldChecks, 0, "normal interactions retain priority")
+Runtime.emit("world.interacted", { kind = "none" })
+T.eq(fieldChecks, 1, "an unhandled A press checks CUT while Auto HM use is on")
+T.eq(cuts, 0, "an ineligible facing cell is not cut")
+fieldResult = "ok"
+Runtime.emit("world.interacted", { kind = "none" })
+T.eq(cuts, 1, "an eligible facing bush is cut")
+
+facingNpc = { def = { sprite = "SPRITE_OAK" } }
+Runtime.emit("world.interacted", { kind = "npc", target = facingNpc })
+T.eq(strengthChecks, 0, "ordinary NPC interactions do not check STRENGTH")
+T.eq(overworld.strengthActive, nil, "ordinary NPCs do not activate STRENGTH")
+
+facingNpc.def.sprite = "SPRITE_BOULDER"
+Runtime.emit("world.interacted", { kind = "npc", target = facingNpc })
+T.eq(strengthChecks, 1, "a facing boulder checks for STRENGTH")
+T.eq(overworld.strengthActive, nil, "STRENGTH stays inactive without an eligible user")
+
+local TextBox = require("src.render.TextBox")
+local oldTextBoxNew = TextBox.new
+local strengthMessages = {}
+TextBox.new = function(_, text, onDone, opts)
+  local box = { text = text, onDone = onDone, opts = opts }
+  strengthMessages[#strengthMessages + 1] = box
+  return box
+end
+
+strengthMon = { species = "MACHOP", nickname = "PUSHER" }
+local boulderMessage = setmetatable({}, TextBox)
+facingNpc.frozen = true
+worldStack:push(boulderMessage)
+Runtime.emit("world.interacted", { kind = "npc", target = facingNpc })
+T.eq(strengthChecks, 2, "a facing boulder rechecks the party")
+T.eq(overworld.strengthActive, true, "a STRENGTH user activates boulder pushing")
+T.eq(facingNpc.frozen, false, "Auto STRENGTH unfreezes the boulder")
+T.check(worldStack.states[2] ~= boulderMessage,
+  "Auto STRENGTH removes the pending boulder requirement message")
+T.check(strengthMessages[1].text:find("PUSHER", 1, true)
+        and strengthMessages[1].text:find("STRENGTH", 1, true),
+  "Auto HM use shows the used STRENGTH message")
+strengthMessages[1].onDone()
+T.check(strengthMessages[2].text:find("PUSHER", 1, true)
+        and strengthMessages[2].text:find("move boulders", 1, true),
+  "Auto HM use shows the can move boulders message")
+T.eq(strengthMessages[2].onDone, nil,
+  "Auto STRENGTH returns directly to the overworld without a white flash")
+TextBox.new = oldTextBoxNew
+worldStack.states = { overworld }
+
+facingWater = true
+Runtime.emit("world.interacted", { kind = "none" })
+T.eq(surfChecks, 1, "facing water checks whether SURF is currently usable")
+T.eq(surfs, 0, "water does nothing without SURF or a rod")
+T.eq(fishedWith, nil, "water does not fish without a rod")
+
+surfMon = { species = "SQUIRTLE" }
+Runtime.emit("world.interacted", { kind = "none" })
+T.eq(surfs, 1, "SURF starts immediately when no rod is owned")
+
+surfMon = nil
+game.save.inventory.OLD_ROD = 1
+Runtime.emit("world.interacted", { kind = "none" })
+T.eq(fishedWith, "OLD_ROD", "the owned rod starts fishing when SURF is unavailable")
+
+surfMon = { species = "SQUIRTLE" }
+game.save.inventory.GOOD_ROD = 1
+game.save.inventory.SUPER_ROD = 1
+fishedWith = nil
+Runtime.emit("world.interacted", { kind = "none" })
+local waterMenu = worldStack:top()
+T.check(waterMenu ~= overworld and #waterMenu.items == 3,
+  "SURF plus a rod opens a three-option popup")
+T.eq(waterMenu.items[1].label, "USE SUPER ROD",
+  "the strongest owned rod is the default first option")
+T.eq(waterMenu.items[2].label, "SURF", "SURF is the second option")
+T.eq(waterMenu.items[3].label, "CANCEL", "CANCEL is the third option")
+T.eq(waterMenu.ty, 10, "the water popup is anchored to the bottom")
+
+input.pressed = { b = true }
+waterMenu:update(0)
+input.pressed = {}
+T.eq(worldStack:top(), overworld, "B closes the water popup")
+T.eq(fishedWith, nil, "B does not fish")
+T.eq(surfs, 1, "B does not SURF")
+
+Runtime.emit("world.interacted", { kind = "none" })
+waterMenu = worldStack:top()
+input.pressed = { a = true }
+waterMenu:update(0)
+input.pressed = {}
+T.eq(fishedWith, "SUPER_ROD", "A uses the default rod option")
+
+fishedWith = nil
+Runtime.emit("world.interacted", { kind = "none" })
+waterMenu = worldStack:top()
+input.pressed = { down = true }
+waterMenu:update(0)
+input.pressed = { a = true }
+waterMenu:update(0)
+input.pressed = {}
+T.eq(surfs, 2, "the second popup option starts SURF")
+T.eq(fishedWith, nil, "choosing SURF does not fish")
+
+Runtime.emit("world.interacted", { kind = "none" })
+waterMenu = worldStack:top()
+input.pressed = { up = true }
+waterMenu:update(0)
+input.pressed = { a = true }
+waterMenu:update(0)
+input.pressed = {}
+T.eq(worldStack:top(), overworld, "the explicit CANCEL option closes the popup")
+T.eq(surfs, 2, "the explicit CANCEL option does not SURF")
+T.eq(fishedWith, nil, "the explicit CANCEL option does not fish")
+
+facingWater, surfMon = false, nil
+game.save.inventory.OLD_ROD = nil
+game.save.inventory.GOOD_ROD = nil
+game.save.inventory.SUPER_ROD = nil
+
+local OverworldController = require("src.world.OverworldController")
+local oldScreensPush = Screens.push
+local pushedScreen, pushedOpts
+Screens.push = function(_, id, opts)
+  pushedScreen, pushedOpts = id, opts
+end
+
+fieldMoveMons.FLY = { species = "PIDGEOT" }
+fieldMoveMons.TELEPORT = { species = "ABRA" }
+input.pressed = { select = true }
+OverworldController.handleInput(overworld)
+input.pressed = {}
+local fieldMenu = worldStack:top()
+T.eq(fieldMenu.items[1].label, "FLY", "SELECT offers FLY outdoors")
+T.eq(fieldMenu.items[2].label, "TELEPORT", "SELECT offers TELEPORT outdoors")
+T.eq(fieldMenu.items[3].label, "CANCEL", "the outdoor popup ends with CANCEL")
+T.eq(fieldMenu.ty, 10, "the outdoor popup is anchored to the bottom")
+input.pressed = { a = true }
+fieldMenu:update(0)
+input.pressed = {}
+T.eq(pushedScreen, "TownMap", "FLY opens the normal Town Map")
+pushedOpts.onFly("CERULEAN_CITY")
+T.eq(flyDest, "CERULEAN_CITY", "the Town Map selection invokes FLY")
+Screens.push = oldScreensPush
+
+input.pressed = { select = true }
+OverworldController.handleInput(overworld)
+input.pressed = {}
+fieldMenu = worldStack:top()
+input.pressed = { down = true }
+fieldMenu:update(0)
+input.pressed = { a = true }
+fieldMenu:update(0)
+input.pressed = {}
+T.eq(escapes, 1, "TELEPORT starts the normal escape animation")
+
+fieldMoveMons.FLY, fieldMoveMons.TELEPORT = nil, nil
+fieldMoveMons.DIG = { species = "DIGLETT" }
+fieldMoveMons.FLASH = { species = "PIKACHU" }
+overworld.map = { id = "ROCK_TUNNEL_1F", def = { tileset = "CAVERN" } }
+overworld.dark = true
+input.pressed = { select = true }
+OverworldController.handleInput(overworld)
+input.pressed = {}
+fieldMenu = worldStack:top()
+T.eq(fieldMenu.items[1].label, "FLASH", "SELECT offers FLASH first on a dark map")
+T.eq(fieldMenu.items[2].label, "DIG", "SELECT offers DIG second in a dark dungeon")
+T.eq(fieldMenu.items[3].label, "CANCEL", "the dungeon popup ends with CANCEL")
+input.pressed = { down = true }
+fieldMenu:update(0)
+input.pressed = { a = true }
+fieldMenu:update(0)
+input.pressed = {}
+T.eq(escapes, 2, "DIG starts the normal escape animation")
+
+input.pressed = { select = true }
+OverworldController.handleInput(overworld)
+input.pressed = {}
+fieldMenu = worldStack:top()
+input.pressed = { a = true }
+fieldMenu:update(0)
+input.pressed = {}
+T.eq(overworld.dark, false, "FLASH lights the current dark map")
+T.eq(game.save.flashLit, true, "FLASH records the map lighting state")
+T.check(worldStack:top() ~= overworld, "FLASH shows the normal field-move message")
+worldStack:pop()
+
+menu.index = 2
 input.pressed = { a = true }
 menu:update(0)
 input.pressed = {}
 local description = game.stack:top()
 T.check(description ~= menu and description.pages,
   "A opens the selected setting description")
-T.check(#description.pages == 2 and #description.pages[1] == 2,
+T.check(#description.pages == 3 and #description.pages[1] == 2,
   "setting descriptions pause after the first two lines")
 game.stack:pop()
 
@@ -117,7 +362,7 @@ input.pressed = {}
 T.eq(game.stack:top(), nil, "B closes the shared options screen")
 
 local ManagerState = require("src.mods.ManagerState")
-ManagerState.openOptions({ game = game }, { id = "qol_later_gen" })
+ManagerState.openOptions({ game = game }, { id = "quality_of_life" })
 local managerMenu = game.stack:top()
 T.check(managerMenu and managerMenu.screenId == exports.screenId,
   "Mod Manager opens the same options screen")
@@ -158,8 +403,14 @@ Runtime.emit("battle.started", {
   battle = battle, kind = "wild", species = "RATTATA", level = 5,
 })
 battle.fx = { shakeX = 2, shakeY = 3 }
+battle.introBalls = true
 battle:draw()
-T.eq(baseDraws, 1, "wrapped draw calls the base renderer once")
+T.eq(baseDraws, 1, "wrapped draw runs during the wild intro")
+T.eq(ball, nil, "caught indicator stays hidden during the wild intro")
+
+battle.introBalls, bar = nil, nil
+battle:draw()
+T.eq(baseDraws, 2, "wrapped draw calls the base renderer once per frame")
 T.check(bar and bar.y == 92 and bar.h == 2,
   "enabled EXP bar follows screen shake")
 T.eq(bar.x, 80 + 67 - exports.expPixels(battle) + 2,
@@ -171,8 +422,8 @@ T.check(ball and ball.x == 9 and ball.y == 10,
 T.check(ball.color[1] == 1 and ball.color[2] == 0 and ball.color[3] == 0,
   "red indicator mode draws red")
 
-game.save.options.modOptions.qol_later_gen.battle_exp_bar = "blue"
-game.save.options.modOptions.qol_later_gen.pokedex_indicator = "gray"
+game.save.options.modOptions.quality_of_life.qol_exp_bar = "blue"
+game.save.options.modOptions.quality_of_life.qol_caught_indicator = "grey"
 battle.fx, bar, ball = nil, nil, nil
 battle:draw()
 T.check(bar.color[1] == 56 / 255 and bar.color[2] == 144 / 255
@@ -180,11 +431,11 @@ T.check(bar.color[1] == 56 / 255 and bar.color[2] == 144 / 255
 T.check(ball.color[1] == 1 and ball.color[2] == 1 and ball.color[3] == 1,
   "greyscale indicator applies no tint")
 
-game.save.options.modOptions.qol_later_gen.battle_exp_bar = "off"
-game.save.options.modOptions.qol_later_gen.pokedex_indicator = "off"
+game.save.options.modOptions.quality_of_life.qol_exp_bar = "off"
+game.save.options.modOptions.quality_of_life.qol_caught_indicator = "off"
 bar, ball = nil, nil
 battle:draw()
-T.eq(baseDraws, 3, "disabled overlays still call the base renderer")
+T.eq(baseDraws, 4, "disabled overlays still call the base renderer")
 T.check(bar == nil and ball == nil, "disabled options draw no overlays")
 
 love.graphics.draw, love.graphics.rectangle = oldDraw, oldRectangle

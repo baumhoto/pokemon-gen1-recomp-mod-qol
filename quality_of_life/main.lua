@@ -1,9 +1,11 @@
-local SCREEN_ID = "QolLaterGenMenu"
+local SCREEN_ID = "QualityOfLife"
 local DERIVED_BALL = "save/mod-derived/quality_of_life/ui/ball.png"
 
 local EXP_X, EXP_Y, EXP_WIDTH = 80, 89, 67
 local EXP_BLUE = { 56 / 255, 144 / 255, 240 / 255, 1 }
 local EXP_BLACK = { 0, 0, 0, 1 }
+local FISHING_RODS = { "SUPER_ROD", "GOOD_ROD", "OLD_ROD" }
+local DIG_TILESETS = { FOREST = true, CEMETERY = true, CAVERN = true, FACILITY = true, INTERIOR = true }
 
 local MODES = {
   qol_exp_bar = {
@@ -16,11 +18,18 @@ local MODES = {
     { id = "grey", label = "ON (GREY)" },
     { id = "red", label = "ON (RED)" },
   },
+  qol_easy_interactions = {
+    { id = false, label = "OFF" },
+    { id = true, label = "ON" },
+  },
 }
 
 return function(mod)
+  local FieldDefaults = require("src.world.FieldDefaults")
   local Growth = require("src.pokemon.Growth")
+  local Map = require("src.world.Map")
   local PaletteFX = require("src.render.PaletteFX")
+  local Strings = require("src.core.Strings")
 
   mod.options:define({
     { key = "qol_exp_bar", label = "BATTLE EXP BAR", type = "choice",
@@ -33,7 +42,176 @@ return function(mod)
         { "OFF", "off" }, { "ON (GREY)", "grey" },
         { "ON (RED)", "red" },
       } },
+    { key = "qol_easy_interactions", label = "EASY INTERACTIONS", type = "toggle",
+      default = false },
   })
+
+  local function useCutFacing(ow)
+    if ow:useCutFieldMove() ~= "ok" then return false end
+    local fx, fy = ow.player:facingCell()
+    return ow:tryCut(fx, fy) == true
+  end
+
+  local function fishingRod(game)
+    local inventory = game and game.save and game.save.inventory or {}
+    for _, rod in ipairs(FISHING_RODS) do
+      if type(inventory[rod]) == "number" and inventory[rod] > 0 then
+        return rod
+      end
+    end
+  end
+
+  local function useSurfFacing(ow)
+    local fx, fy = ow.player:facingCell()
+    ow:trySurf(fx, fy)
+  end
+
+  local function pushBottomMenu(game, items)
+    local width = 10
+    for _, item in ipairs(items) do
+      width = math.max(width, #item.label + 4)
+    end
+    local height = #items * 2 + 2
+    game.stack:push(mod.ui.Menu.new(game, items, {
+      tx = 20 - width, ty = 18 - height, tw = width, th = height,
+    }))
+  end
+
+  local function useWaterFacing(ow)
+    if not ow:facingIsShoreOrWater() then return false end
+
+    local game = mod.world.game
+    local rod = fishingRod(game)
+    local canSurf = ow:useSurfFieldMove() == "ok"
+    if not rod and not canSurf then return false end
+
+    if rod and canSurf then
+      local def = game.data.items and game.data.items[rod]
+      local rodName = def and def.name or rod:gsub("_", " ")
+      local rodLabel = "USE " .. rodName
+      pushBottomMenu(game, {
+        { label = rodLabel, onSelect = function() ow:goFishing(rod) end },
+        { label = "SURF", onSelect = function() useSurfFacing(ow) end },
+        { label = "CANCEL" },
+      })
+    elseif rod then
+      ow:goFishing(rod)
+    else
+      useSurfFacing(ow)
+    end
+    return true
+  end
+
+  local function useFlash(ow, game)
+    local TextBox = require("src.render.TextBox")
+    local Transition = require("src.render.Transition")
+    ow.dark = false
+    game.save.flashLit = true
+    game.stack:push(TextBox.new(game,
+      game.data.text._FlashLightsAreaText
+        or Strings("A blinding FLASH\nlights the area!"), function()
+        game.stack:push(Transition.whiteFlash(game))
+      end))
+  end
+
+  local function openSelectFieldMoves(ow)
+    local game = mod.world.game
+    local outside = Map.isOutside(ow.map.def,
+      FieldDefaults.field(game.data, "outsideTilesets"))
+    local items = {}
+
+    if outside and ow:partyKnows("FLY") then
+      items[#items + 1] = { label = "FLY", onSelect = function()
+        mod.ui.push(game, "TownMap", { fly = true, onFly = function(mapId)
+          ow:flyTo(mapId)
+        end })
+      end }
+    end
+    if outside and ow:partyKnows("TELEPORT") then
+      items[#items + 1] = { label = "TELEPORT", onSelect = function()
+        ow:beginTeleportOut()
+      end }
+    end
+    if ow.dark and ow:partyKnows("FLASH") then
+      items[#items + 1] = { label = "FLASH", onSelect = function()
+        useFlash(ow, game)
+      end }
+    end
+    if DIG_TILESETS[ow.map.def.tileset] and ow.map.id ~= "AGATHAS_ROOM"
+       and ow:partyKnows("DIG") then
+      items[#items + 1] = { label = "DIG", onSelect = function()
+        ow:beginTeleportOut()
+      end }
+    end
+    if #items == 0 then return false end
+
+    items[#items + 1] = { label = "CANCEL" }
+    pushBottomMenu(game, items)
+    return true
+  end
+
+  do
+    local OverworldController = require("src.world.OverworldController")
+    local handlers = rawget(OverworldController, "__qolSelectHandlers")
+    if not handlers then
+      handlers = {}
+      local handleInput = OverworldController.handleInput
+      OverworldController.handleInput = function(self, ...)
+        for _, handler in pairs(OverworldController.__qolSelectHandlers) do
+          if handler(self) then return end
+        end
+        return handleInput(self, ...)
+      end
+      OverworldController.__qolSelectHandlers = handlers
+    end
+    handlers[mod.id] = function(ow)
+      local game = mod.world.game
+      if not mod.options:get("qol_easy_interactions") or not game or not game.stack
+         or game.stack:top() ~= ow then return false end
+      if not game.input:wasPressed("select") then return false end
+      openSelectFieldMoves(ow)
+      return true
+    end
+  end
+
+  local function useStrengthFacing(ow, target)
+    if not target or not Map.isPushable(target.def) or ow.strengthActive then
+      return false
+    end
+    local mon = ow:partyKnows("STRENGTH")
+    if not mon then return false end
+
+    local game = mod.world.game
+    local TextBox = require("src.render.TextBox")
+    if getmetatable(game.stack:top()) == TextBox then
+      game.stack:pop()
+      target.frozen = false
+    end
+    local def = game.data.pokemon[mon.species]
+    local name = mon.nickname or def.name
+    ow.strengthActive = true
+    local t1 = (game.data.text._UsedStrengthText
+      or "{RAM:wNameBuffer} used\nSTRENGTH."):gsub("{RAM:wNameBuffer}", name)
+    local t2 = (game.data.text._CanMoveBouldersText
+      or "{RAM:wNameBuffer} can\nmove boulders."):gsub("{RAM:wNameBuffer}", name)
+    game.stack:push(TextBox.new(game, t1, function()
+      game.stack:push(TextBox.new(game, t2))
+    end, { auto = { sound = function()
+      return require("src.core.Sound").playCry(game.data, mon.species)
+    end } }))
+    return true
+  end
+
+  mod.events:on("world.interacted", function(event)
+    if not event or not mod.options:get("qol_easy_interactions") then return end
+    local ow = mod.world:overworld()
+    if not ow then return end
+    if event.kind == "none" then
+      if not useWaterFacing(ow) then useCutFacing(ow) end
+    elseif event.kind == "npc" then
+      useStrengthFacing(ow, event.target)
+    end
+  end)
 
   local function optionValue(game, key)
     local options = game and game.save and game.save.options
@@ -84,11 +262,20 @@ return function(mod)
       {
         label = "POKéDEX INDICATOR",
         key = "qol_caught_indicator",
-        --description = "ADDS AN INDICATOR\nFOR ALREADY CAUGHT\f"
-        --  .. "WILD POKéMON.",
         description = "ADDS A POKéBALL\nICON FOR ALREADY\f"
           .. "CAUGHT POKéMON\nDURING WILD\f"
           .. "ENCOUNTERS.",
+      },
+      {
+        label = "EASY INTERACTIONS",
+        key = "qol_easy_interactions",
+----------------------"A                Z\nA                Z\f"
+        description = "ACTIVATE STRENGTH/\nCUT WITH (A) WHEN\f"
+-------------"A                Z\nA                Z\f"
+          .. "FACING BOULDERS\nOR BUSHES.\f"
+          .. "USE (SELECT) TO\nUSE FLY, TELEPORT\f"
+          .. "OR DIG. PRESS (A)\nIN FRONT OF WATER\f"
+          .. "TO USE SURF OR\nFISHING RODS.",
       },
     }
     for _, row in ipairs(rows) do
@@ -201,7 +388,7 @@ return function(mod)
     return battle.enemy and not battle.showEnemyTrainer
       and not battle.enemySendingOut
       and not battle:growInScale(battle.enemy)
-      and slide == 0 and not battle.enemy.fainted
+      and slide == 0 and not battle.introBalls and not battle.enemy.fainted
   end
 
   local function expPixels(battle)
