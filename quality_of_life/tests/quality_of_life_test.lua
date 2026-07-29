@@ -86,7 +86,7 @@ local menu = game.stack:top()
 T.check(menu and menu.screenId == exports.screenId, "opens the custom submenu")
 T.eq(menu.rows[1].value(game), "OFF", "EXP bar defaults off")
 T.eq(menu.rows[2].value(game), "OFF", "indicator defaults off")
-T.eq(menu.rows[3].value(game), "OFF", "Auto HM use defaults off")
+T.eq(menu.rows[3].value(game), "OFF", "Easy interactions default off")
 
 local fieldChecks, cuts, strengthChecks, surfChecks = 0, 0, 0, 0
 local fieldResult = "nothing"
@@ -153,9 +153,9 @@ menu.index = 3
 input.pressed = { right = true }
 menu:update(0)
 input.pressed = {}
-T.eq(game.save.options.modOptions.quality_of_life.auto_hm_use, true,
-  "right enables Auto HM use")
-T.eq(menu.rows[3].value(game), "ON", "submenu refreshes the Auto HM use label")
+T.eq(game.save.options.modOptions.quality_of_life.qol_easy_interactions, true,
+  "right enables Easy interactions")
+T.eq(menu.rows[3].value(game), "ON", "submenu refreshes Easy interactions")
 T.eq(writes, 3, "submenu changes persist immediately")
 
 Runtime.emit("world.interacted", { kind = "sign" })
