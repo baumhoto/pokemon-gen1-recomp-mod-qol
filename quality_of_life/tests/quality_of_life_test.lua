@@ -376,6 +376,49 @@ local playerMon = {
   species = "BULBASAUR", level = level,
   exp = math.floor((current + nextLevel) / 2),
 }
+-- EXP bar animation and level-up behavior
+local Growth = require("src.pokemon.Growth")
+local levelUpMon = {
+  species = "BULBASAUR", level = level, exp = playerMon.exp,
+}
+local levelUpBattle = { data = Data, frame = 0, player = { mon = levelUpMon } }
+local levelUpState = {}
+local shown = exports.animatedExpPixels(levelUpBattle, levelUpState)
+levelUpMon.level = level + 1
+local levelCurrent = Growth.expForLevel(playerDef.growthRate, level + 1)
+local levelNext = Growth.expForLevel(playerDef.growthRate, level + 2)
+levelUpMon.exp = math.floor((levelCurrent + levelNext) / 2)
+local neverWentBackwards, guard = true, 0
+while shown < 67 and guard < 100 do
+  local previous = shown
+  levelUpBattle.frame = levelUpBattle.frame + 1
+  shown = exports.animatedExpPixels(levelUpBattle, levelUpState)
+  neverWentBackwards = neverWentBackwards and shown >= previous
+  guard = guard + 1
+end
+T.check(neverWentBackwards and shown == 67,
+  "a level-up fills the EXP bar before resetting it")
+for _ = 1, 30 do
+  levelUpBattle.frame = levelUpBattle.frame + 1
+  T.eq(exports.animatedExpPixels(levelUpBattle, levelUpState), 67,
+    "the full level-up bar remains visible during its hold")
+end
+levelUpBattle.frame = levelUpBattle.frame + 1
+T.eq(exports.animatedExpPixels(levelUpBattle, levelUpState), 0,
+  "the level-up bar resets instantly after the hold")
+levelUpBattle.frame = levelUpBattle.frame + 1
+T.eq(exports.animatedExpPixels(levelUpBattle, levelUpState), 1,
+  "the reset bar animates toward the new level's remaining EXP")
+
+local levelCap = Data.constants and Data.constants.levelCap or 100
+local maxBattle = { data = Data, frame = 0, player = { mon = {
+  species = "BULBASAUR", level = levelCap, exp = 0,
+} } }
+T.eq(exports.expPixels(maxBattle), 67,
+  "a max-level Pokemon always has a full EXP bar")
+T.eq(exports.animatedExpPixels(maxBattle, {}), 67,
+  "the animated max-level EXP bar starts full")
+
 local baseDraws = 0
 local battle = {
   game = game,
@@ -422,9 +465,41 @@ T.check(ball and ball.x == 9 and ball.y == 10,
 T.check(ball.color[1] == 1 and ball.color[2] == 0 and ball.color[3] == 0,
   "red indicator mode draws red")
 
+local originalExp = playerMon.exp
+local initialPixels = bar.w
+playerMon.exp = nextLevel - 1
+battle.fx, battle.phase, bar = nil, nil, nil
+battle.frame = 1
+battle:draw()
+T.eq(bar.w, initialPixels + 1,
+  "EXP bar advances one pixel when EXP changes")
+T.check(bar.w < exports.expPixels(battle),
+  "EXP bar does not jump immediately to the new value")
+bar = nil
+battle:draw()
+T.eq(bar.w, initialPixels + 1,
+  "EXP bar advances at most once per battle frame")
+
+playerMon.exp = originalExp
+local originalMon = battle.player.mon
+battle.player.mon = {
+  species = playerMon.species, level = playerMon.level, exp = nextLevel - 1,
+}
+battle.frame = 2
+battle.phase, bar = "moveSelect", nil
+battle:draw()
+T.check(bar and bar.x == 88 and bar.x + bar.w == 147,
+  "the TYPE/PP box covers only the overlapping part of the EXP bar")
+battle.phase, bar = "mimicSelect", nil
+battle:draw()
+T.check(bar and bar.x == 128 and bar.x + bar.w == 147,
+  "the Mimic menu covers only the overlapping part of the EXP bar")
+battle.phase, battle.player.mon = nil, originalMon
+
 game.save.options.modOptions.quality_of_life.qol_exp_bar = "blue"
 game.save.options.modOptions.quality_of_life.qol_caught_indicator = "grey"
 battle.fx, bar, ball = nil, nil, nil
+battle.frame = 3
 battle:draw()
 T.check(bar.color[1] == 56 / 255 and bar.color[2] == 144 / 255
         and bar.color[3] == 240 / 255, "blue EXP mode draws blue")
@@ -435,7 +510,7 @@ game.save.options.modOptions.quality_of_life.qol_exp_bar = "off"
 game.save.options.modOptions.quality_of_life.qol_caught_indicator = "off"
 bar, ball = nil, nil
 battle:draw()
-T.eq(baseDraws, 4, "disabled overlays still call the base renderer")
+T.eq(baseDraws, 8, "disabled overlays still call the base renderer")
 T.check(bar == nil and ball == nil, "disabled options draw no overlays")
 
 love.graphics.draw, love.graphics.rectangle = oldDraw, oldRectangle
