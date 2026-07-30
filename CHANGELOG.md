@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2
+
+### Added
+
+- Support for caught indicator in wide battle mode
+- Support for xp bar indicator in wide battle mode
+
+### Fixed
+
+- FLASH not working from the convenience popup since since recomp version 0.1.42
+
 ## 1.1.1
 
 ### Added
