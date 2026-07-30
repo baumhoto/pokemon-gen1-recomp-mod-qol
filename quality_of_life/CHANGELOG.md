@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1
+
+### Added
+
+- Exp bar is now animated
+
+### Fixed
+
+- Exp bar sometimes rendered on top of popups
+
 ## 1.1.0
 
 ### Added
