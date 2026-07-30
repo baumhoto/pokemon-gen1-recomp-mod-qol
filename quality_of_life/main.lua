@@ -2,6 +2,7 @@ local SCREEN_ID = "QualityOfLife"
 local DERIVED_BALL = "save/mod-derived/quality_of_life/ui/ball.png"
 
 local EXP_X, EXP_Y, EXP_WIDTH = 80, 89, 67
+local EXP_LEVEL_HOLD_FRAMES = 30
 local EXP_BLUE = { 56 / 255, 144 / 255, 240 / 255, 1 }
 local EXP_BLACK = { 0, 0, 0, 1 }
 local FISHING_RODS = { "SUPER_ROD", "GOOD_ROD", "OLD_ROD" }
@@ -407,14 +408,82 @@ return function(mod)
     return math.floor(progress * EXP_WIDTH / needed)
   end
 
-  local function drawExpBar(battle, slide, sx, sy)
+  local function animatedExpPixels(battle, state)
+    local mon = battle.player and battle.player.mon
+    local target = expPixels(battle)
+    if state.expMon ~= mon or state.expPixels == nil then
+      state.expMon = mon
+      state.expPixels = target
+      state.expLevel = mon and mon.level
+      state.expPhase = nil
+      state.expLevelCycles = 0
+      state.expFrame = battle.frame
+      return target
+    end
+    if state.expFrame == battle.frame then return state.expPixels end
+    state.expFrame = battle.frame
+
+    local level = mon and mon.level or state.expLevel
+    if level and state.expLevel and level > state.expLevel then
+      state.expLevelCycles = (state.expLevelCycles or 0) + level - state.expLevel
+      state.expLevel = level
+      if not state.expPhase then state.expPhase = "fill_level" end
+    elseif level and level ~= state.expLevel then
+      state.expLevel = level
+    end
+
+    if state.expPhase == "fill_level" then
+      state.expPixels = math.min(EXP_WIDTH, state.expPixels + 1)
+      if state.expPixels == EXP_WIDTH then
+        state.expPhase = "hold_level"
+        state.expHoldFrames = EXP_LEVEL_HOLD_FRAMES
+      end
+    elseif state.expPhase == "hold_level" then
+      if state.expHoldFrames > 0 then
+        state.expHoldFrames = state.expHoldFrames - 1
+      else
+        state.expLevelCycles = math.max(0, (state.expLevelCycles or 1) - 1)
+        local cap = battle.data.constants and battle.data.constants.levelCap or 100
+        if mon and mon.level >= cap then
+          state.expPhase = nil
+          state.expPixels = EXP_WIDTH
+          state.expLevelCycles = 0
+        else
+          state.expPixels = 0
+          state.expPhase = state.expLevelCycles > 0 and "fill_level"
+                                                     or "after_level"
+        end
+      end
+    elseif state.expPhase == "after_level" then
+      state.expPixels = math.min(target, state.expPixels + 1)
+      if state.expPixels >= target then state.expPhase = nil end
+    elseif state.expPixels < target then
+      state.expPixels = math.min(target, state.expPixels + 1)
+    elseif state.expPixels > target then
+      state.expPixels = math.max(target, state.expPixels - 1)
+    end
+    return state.expPixels
+  end
+
+  local function drawExpBar(battle, state, slide, sx, sy)
     local mode = optionValue(battle.game, "qol_exp_bar")
     if mode ~= "black" and mode ~= "blue" then return end
     if not battle.player or battle.safari or battle.demo
        or battle.showPlayerBack or slide ~= 0 then return end
-    local px = expPixels(battle)
+    local px = animatedExpPixels(battle, state)
     if px <= 0 then return end
     local x, y = EXP_X + EXP_WIDTH - px + sx, EXP_Y + sy
+    local coveredThrough
+    if battle.phase == "moveSelect" then
+      coveredThrough = 87 + sx
+    elseif battle.phase == "mimicSelect" then
+      coveredThrough = 127 + sx
+    end
+    if coveredThrough and x <= coveredThrough then
+      local hidden = coveredThrough + 1 - x
+      x, px = x + hidden, px - hidden
+      if px <= 0 then return end
+    end
     local color = mode == "black" and EXP_BLACK or EXP_BLUE
     love.graphics.setShader()
     love.graphics.setColor(color[1], color[2], color[3], color[4])
@@ -446,7 +515,7 @@ return function(mod)
     if battle.blankForAskName then return end
     local sx, sy = shakeOffsets(battle)
     local slide = (battle.introSlide or 0) * 4
-    drawExpBar(battle, slide, sx, sy)
+    drawExpBar(battle, state, slide, sx, sy)
     drawCaughtIndicator(battle, state, slide, sx, sy)
     love.graphics.setColor(1, 1, 1, 1)
   end
@@ -480,4 +549,5 @@ return function(mod)
   mod.exports.screenId = SCREEN_ID
   mod.exports.optionValue = optionValue
   mod.exports.expPixels = expPixels
+  mod.exports.animatedExpPixels = animatedExpPixels
 end
