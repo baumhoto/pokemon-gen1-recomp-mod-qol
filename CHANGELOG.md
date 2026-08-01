@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.1
+
+### Added
+
+- Location banners, choose between 1, 2 or 3 seconds on screen time
+
+### Fixed
+
+- Location banners showing "Rock Tunnel" when entering the Route 10 Poke Center right in front of Rock Tunnel. While correct (that center has the location Rock Tunnel in the game files), we don't want that behavior.
+
 ## v1.2.0
 
 ### Added
