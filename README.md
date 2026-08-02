@@ -3,6 +3,11 @@
 Adds optional, later generation style options.
 Can be toggled individually.
 
+## Tested compatibility
+
+- gen1recomp v0.1.57
+- Dramatic Shape Voxel Mod v1.5.1
+
 ## Installation
 
 Download the newest `.zip` from the
