@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.2.2
+
+### Tested compatibility
+
+- gen1recomp v0.1.57
+- Dramatic Shape Voxel Mod v1.5.1
+
+### Added
+
+- Easily update the mod via the recomp launcher -> Mods -> Update
+
+### Fixed
+
+- No longer can fish while surfing
+- XP bar and caught indicator are correctly "shaking" during wide battles
+- XP bar and caught indicator are correctly positioned when using the "Voxel" Dramatic Shapes mod.
+
 ## v1.2.1
 
 ### Added
