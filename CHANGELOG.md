@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.2.4
+
+### Tested compatibility
+
+- gen1recomp v0.1.64
+- Dramatic Shape Voxel Mod v1.5.4
+
+### Added
+
+- Animation for the XP bar when leveling up
+
+### Fixed
+
+- XP bar will fill up more than once now if a pokemon levels up more than one level
+
 ## v1.2.3
 
 ### Tested compatibility
