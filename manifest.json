@@ -1,7 +1,7 @@
 {
   "id": "quality_of_life",
   "name": "Quality of Life from later generations",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "github": "unxpected-uxp/pokemon-gen1-recomp-mod-qol",
   "api": 2,
   "entry": "main.lua",
@@ -14,5 +14,5 @@
   "dependencies": [],
   "optional_dependencies": [],
   "conflicts": [],
-  "description": "Various quality of life improvements from later generations. During battle enjoy a XP bar and an indicator for caugh Pokemon. Use HM's and fishing rods easily in the overworld without going in the menu. Have banners show your current location when you change the area."
+  "description": "Various quality of life improvements from later generations. During battle, enjoy a XP bar and an indicator for caught Pokemon. Use HM's and fishing rods easily in the overworld without going in the menu. Have banners show your current location when you change the area."
 }

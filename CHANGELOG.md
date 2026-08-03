@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.3
+
+### Tested compatibility
+
+- gen1recomp v0.1.60
+- Dramatic Shape Voxel Mod v1.5.4
+
+### Added
+
+- Added faithful Gen2 icon for the caught Pokemon indicator, available in the options
+
 ## v1.2.2
 
 ### Tested compatibility
