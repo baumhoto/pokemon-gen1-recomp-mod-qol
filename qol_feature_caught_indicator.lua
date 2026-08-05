@@ -127,7 +127,9 @@ function feature.install(mod, services)
       if voxel3dBattleData then
         outline = black
       elseif PaletteFX.mode == "og_inv" then
-        outline = isWide and white or black
+        outline = isWide and white or black      
+      elseif PaletteFX.mode == "gbc_inv" then
+        outline = isWide and black or palette[4]
       else
         outline = palette[4]
       end
