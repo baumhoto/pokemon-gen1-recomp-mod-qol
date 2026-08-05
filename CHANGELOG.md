@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.2.5
+
+### Tested compatibility
+
+- gen1recomp v0.1.69
+- Dramatic Shape Voxel Mod v1.6.0
+
+### Fixed
+
+- XP bar rendering with different color modes/palettes
+- Caught indicator rendering with different color modes/palettes
+- Caught indicator adjusted to newest Voxel Mod version
+
 ## v1.2.4
 
 ### Tested compatibility
