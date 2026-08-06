@@ -5,8 +5,8 @@ Can be toggled individually.
 
 ## Tested compatibility
 
-- gen1recomp v0.1.57
-- Dramatic Shape Voxel Mod v1.5.1
+- gen1recomp v0.1.72
+- Dramatic Shape Voxel Mod v1.6.1
 
 ## Installation
 

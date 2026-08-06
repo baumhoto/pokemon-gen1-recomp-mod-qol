@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.2.6
+
+### Tested compatibility
+
+- gen1recomp v0.1.72
+- Dramatic Shape Voxel Mod v1.6.1
+
+### Added
+
+#### Easy Interaction Options sub menu
+
+- **CUT GRASS:** Turn off the cutting of grass with the **A** button
+- **WATER INTERACTION:** When using **A** button facing water, choose between FISH first, SURF first, FISH only, SURF only
+
+### Fixed
+ 
+- **A** button would prioritize cutting grass instead of interacting with NPC's in grass
+- Simplified some descriptions
+
 ## v1.2.5
 
 ### Tested compatibility

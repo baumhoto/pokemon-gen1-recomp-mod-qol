@@ -35,9 +35,8 @@ local feature = {
   menu = {
     label = "POKéDEX INDICATOR",
     key = "qol_caught_indicator",
-    description = "ADDS A POKéBALL\nICON FOR ALREADY\f"
-      .. "CAUGHT POKéMON\nDURING WILD\f"
-      .. "ENCOUNTERS.",
+    description = "ADDS A POKéBALL\nICON FOR CAUGHT\f"
+      .. "POKéMON IN WILD\nENCOUNTERS.",
   },
 }
 
