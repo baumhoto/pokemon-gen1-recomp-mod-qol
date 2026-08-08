@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.2.7
+
+### Tested compatibility
+
+- gen1recomp v0.1.72
+- Dramatic Shape Voxel Mod v1.7.2
+
+### Added
+
+#### Easy Interactions
+
+- **REPEL:** Adds a **REPEL** option in the **SELECT** menu if a repel item is available. Consumes the weakest ones first. Optional setting to show a prompt whether you want to use another repel when the current one is over.
+
 ## v1.2.6
 
 ### Tested compatibility
