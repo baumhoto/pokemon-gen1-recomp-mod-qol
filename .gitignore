@@ -4,3 +4,4 @@ dist/
 references/
 scripts/
 worktrees/
+hardlinks.ps1

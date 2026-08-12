@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.0
+
+### Tested compatibility
+
+- gen1recomp v0.1.80
+- Dramatic Shape Voxel Mod v1.8.1
+
+### Added
+
+- Beta support for the Gen2 Gold version. This is a test version. I don't have a far enough savegames at the moment to test everything.
+- While in Gen1 you use SELECT button to get the menu for TELEPORT, DIG, etc... in Gen2, for now, you have to press and hold (shortly) START button, since SELECT button is already occupied by Gold itself. For now, REPEL items and FLASH are tested working in the menu.
+
 ## v1.2.7
 
 ### Tested compatibility
