@@ -28,6 +28,7 @@ return function(mod)
     loadModule("qol_feature_location_banners.lua", generation),
     loadModule("qol_feature_easy_interactions.lua", generation),
     loadModule("qol_feature_encounter_rate.lua"),
+    loadModule("qol_feature_low_hp_alarm.lua"),
   }
   local features = {}
   for _, feature in ipairs(allFeatures) do

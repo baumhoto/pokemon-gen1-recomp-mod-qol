@@ -28,6 +28,7 @@ for _, name in ipairs({
   "qol_feature_easy_interactions.lua",
   "qol_feature_location_banners.lua",
   "qol_feature_encounter_rate.lua",
+  "qol_feature_low_hp_alarm.lua",
 }) do
   modFiles["mods/quality_of_life/" .. name] =
     read("mods/quality_of_life/" .. name)
@@ -87,7 +88,9 @@ T.eq(menu.rows[3].value(game), "OFF", "Location banners default off")
 T.eq(menu.rows[4].value(game), "OFF", "Easy interactions defaults off")
 T.eq(menu.rows[5].value(game), "NORMAL",
   "Random battles default to the vanilla rate")
-T.eq(#menu.rows, 5, "the submenu carries every Gen 1 feature row")
+T.eq(menu.rows[6].value(game), "NORMAL",
+  "Low HP alarm defaults to the vanilla looping siren")
+T.eq(#menu.rows, 6, "the submenu carries every Gen 1 feature row")
 
 local fieldChecks, cuts, strengthChecks, surfChecks = 0, 0, 0, 0
 local fieldResult = "nothing"
@@ -296,6 +299,44 @@ local forced = Runtime.call("encounter.roll", function()
 end, routeDef, encounterCtx)
 T.check(forced == nil, "NONE suppresses the encounter without rolling")
 qolOptions.qol_encounter_rate = false
+
+-- LOW HP ALARM budgets the siren rather than letting it loop.  ctx.on is the
+-- toggle vanilla acts on -- it is what calls Sound.startLoop/stopLoop -- so
+-- what reaches the vanilla link is the whole behaviour.
+local alarmClock = 0
+local oldAlarmTime = love.timer.getTime
+love.timer.getTime = function() return alarmClock end
+local aBattle = {}
+local function alarmReaching(on, battle)
+  local sounded
+  Runtime.call("battle.low_health_alarm", function(ctx)
+    sounded = ctx.on
+  end, { on = on, battle = battle or aBattle })
+  return sounded
+end
+
+T.eq(alarmReaching(true), true, "NORMAL leaves the siren looping")
+qolOptions.qol_low_hp_alarm = 1
+T.eq(alarmReaching(true), true, "a budgeted siren sounds on the first frame")
+alarmClock = 0.5
+T.eq(alarmReaching(true), true, "and keeps sounding inside the budget")
+alarmClock = 1
+T.eq(alarmReaching(true), false, "then falls silent once the budget is spent")
+alarmClock = 5
+T.eq(alarmReaching(true), false, "and stays silent while the bar is still red")
+
+-- "Once" is once per visit to the red, not once per battle: the engine
+-- turning the alarm off (healed out of the red, a KO, the battle ending) is
+-- what re-arms it.
+T.eq(alarmReaching(false), false, "an engine-off frame passes straight through")
+T.eq(alarmReaching(true), true, "dropping back into the red sounds it again")
+T.eq(alarmReaching(true, {}), true, "another battle starts on a fresh budget")
+
+qolOptions.qol_low_hp_alarm = 0
+T.eq(alarmReaching(true, {}), false, "MUTED never sounds the siren at all")
+
+love.timer.getTime = oldAlarmTime
+qolOptions.qol_low_hp_alarm = false
 
 local oldDrawBox, oldFontDraw, oldFontWidth = Font.drawBox, Font.draw, Font.width
 local oldGetTime = love.timer.getTime

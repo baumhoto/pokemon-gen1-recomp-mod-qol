@@ -110,3 +110,20 @@ forces, are unaffected.
 > [!NOTE]
 > Gen 1 only for now. Gold checks its encounter rate before the point this mod
 > can reach, so the row does not appear there.
+
+### Low HP alarm
+
+*Stop the red-HP siren from looping.*
+
+Under **OPTION &rarr; QUALITY OF LIFE &rarr; LOW HP ALARM**:
+
+| Setting | Effect |
+| ------- | ------ |
+| `NORMAL` | The original siren, looping while the bar stays red. The default. |
+| `ONCE (1 SEC)` | Sounds for a second, then goes quiet. |
+| `ONCE (2 SEC)` | Sounds for two seconds, then goes quiet. |
+| `MUTED` | Never sounds. |
+
+The warning re-arms each time your bar drops back into the red, so you still
+hear a new scare &mdash; it just stops nagging while you play out the turn.
+Works in both Red/Blue/Yellow and Gold.

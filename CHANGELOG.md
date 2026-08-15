@@ -12,6 +12,16 @@
 - Gen 1 only for now. Gold runs its encounter-rate check before the hook this
   rides, so the row is hidden there rather than shipped half-working.
 
+#### Low HP Alarm
+
+- **LOW HP ALARM:** The red-HP siren normally loops for as long as the bar
+  stays red. **ONCE (1 SEC)** and **ONCE (2 SEC)** sound it briefly and then
+  let it go quiet; **MUTED** never sounds it. **NORMAL** is the default and
+  keeps the original looping siren.
+- It re-arms every time the bar drops back into the red, so a fresh scare
+  still gets a warning — it just stops nagging.
+- Works in both Red/Blue/Yellow and Gold.
+
 ## v1.3.0
 
 ### Tested compatibility
