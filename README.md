@@ -89,3 +89,24 @@ After installing, features default to **OFF**.
     </td>
   </tr>
 </table>
+
+### Random battles
+
+*Scale how often wild encounters start.*
+
+Under **OPTION &rarr; QUALITY OF LIFE &rarr; RANDOM BATTLES**:
+
+| Setting | Effect |
+| ------- | ------ |
+| `NORMAL` | Vanilla encounter rates. The default; changes nothing. |
+| `HALF` | Halves each map's own encounter rate. |
+| `DOUBLE` | Doubles it, capped so high-rate maps stay high. |
+| `NONE` | No wild encounters at all. |
+
+Rates are scaled per map, so a route that was already quiet stays quieter than
+a cave that was already busy. Trainer battles, and any encounter a script
+forces, are unaffected.
+
+> [!NOTE]
+> Gen 1 only for now. Gold checks its encounter rate before the point this mod
+> can reach, so the row does not appear there.

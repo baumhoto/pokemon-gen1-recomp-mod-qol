@@ -51,6 +51,7 @@ for _, name in ipairs({
   "qol_feature_caught_indicator.lua",
   "qol_feature_easy_interactions.lua",
   "qol_feature_location_banners.lua",
+  "qol_feature_encounter_rate.lua",
 }) do
   modFiles["mods/quality_of_life/" .. name] =
     read("mods/quality_of_life/" .. name)
@@ -107,7 +108,9 @@ T.eq(rows[3].label, "CANCEL", "preserves the CANCEL row")
 rows[2].activate(game)
 local menu = game.stack:top()
 T.check(menu and menu.screenId == exports.screenId, "opens the custom submenu")
-T.eq(#menu.rows, 3, "menu drops XP BAR but keeps the ported features")
+-- Both Gen 1-only features are absent here: Gold draws its own XP bar, and
+-- RANDOM BATTLES rides a hook that fires after Gold's encounter-rate gate.
+T.eq(#menu.rows, 3, "menu drops the Gen 1-only rows but keeps the ported features")
 T.eq(menu.rows[1].label, "POKéDEX INDICATOR", "keeps the caught indicator row")
 T.eq(menu.rows[2].label, "LOCATION BANNERS", "keeps the location banners row")
 T.eq(menu.rows[3].label, "EASY INTERACTIONS", "keeps the easy interactions row")

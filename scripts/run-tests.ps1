@@ -47,7 +47,8 @@ $modFiles = @(
   "qol_feature_xp_bar.lua",
   "qol_feature_caught_indicator.lua",
   "qol_feature_easy_interactions.lua",
-  "qol_feature_location_banners.lua"
+  "qol_feature_location_banners.lua",
+  "qol_feature_encounter_rate.lua"
 )
 
 New-Item -ItemType Directory -Force -Path $stageDir | Out-Null

@@ -27,6 +27,7 @@ for _, name in ipairs({
   "qol_feature_caught_indicator.lua",
   "qol_feature_easy_interactions.lua",
   "qol_feature_location_banners.lua",
+  "qol_feature_encounter_rate.lua",
 }) do
   modFiles["mods/quality_of_life/" .. name] =
     read("mods/quality_of_life/" .. name)
@@ -84,6 +85,9 @@ T.eq(menu.rows[1].value(game), "OFF", "EXP bar defaults off")
 T.eq(menu.rows[2].value(game), "OFF", "indicator defaults off")
 T.eq(menu.rows[3].value(game), "OFF", "Location banners default off")
 T.eq(menu.rows[4].value(game), "OFF", "Easy interactions defaults off")
+T.eq(menu.rows[5].value(game), "NORMAL",
+  "Random battles default to the vanilla rate")
+T.eq(#menu.rows, 5, "the submenu carries every Gen 1 feature row")
 
 local fieldChecks, cuts, strengthChecks, surfChecks = 0, 0, 0, 0
 local fieldResult = "nothing"
@@ -240,6 +244,58 @@ easySub.index = 1
 press(easySub, "b")
 T.eq(game.stack:top(), menu,
   "B on the Easy interactions submenu returns to the QUALITY OF LIFE menu")
+
+menu.index = 5
+press(menu, "right")
+T.eq(game.save.options.modOptions.quality_of_life.qol_encounter_rate, 0.5,
+  "right cycles Random battles from NORMAL to HALF")
+T.eq(menu.rows[5].value(game), "HALF",
+  "submenu refreshes the Random battles label")
+press(menu, "right")
+T.eq(menu.rows[5].value(game), "DOUBLE", "Random battles cycle on to DOUBLE")
+press(menu, "right")
+T.eq(menu.rows[5].value(game), "NONE", "Random battles cycle on to NONE")
+press(menu, "right")
+T.eq(menu.rows[5].value(game), "NORMAL", "Random battles wrap back to NORMAL")
+menu.index = 1
+
+-- Random battles scales the MAP'S OWN RATE through the encounter.roll chain
+-- rather than filtering rolls after the fact, so what the vanilla link is
+-- handed is the whole behaviour -- assert on that instead of sampling
+-- encounters out of a seeded RNG.
+local routeDef = { grass = { rate = 100, buckets = { 256 },
+                             slots = { { species = "RATTATA", level = 3 } } } }
+local encounterCtx = { mapId = "ROUTE_1", terrain = "grass" }
+local function rateHandedToVanilla(encDef)
+  local seen
+  Runtime.call("encounter.roll", function(def)
+    seen = def and def.grass and def.grass.rate
+    return nil
+  end, encDef, encounterCtx)
+  return seen
+end
+local qolOptions = game.save.options.modOptions.quality_of_life
+
+T.eq(rateHandedToVanilla(routeDef), 100, "NORMAL leaves the map rate alone")
+qolOptions.qol_encounter_rate = 0.5
+T.eq(rateHandedToVanilla(routeDef), 50, "HALF halves the map rate")
+qolOptions.qol_encounter_rate = 2
+T.eq(rateHandedToVanilla(routeDef), 200, "DOUBLE doubles the map rate")
+T.eq(routeDef.grass.rate, 100,
+  "scaling copies the def instead of mutating the loaded dataset")
+T.eq(rateHandedToVanilla({ grass = { rate = 200 } }), 255,
+  "DOUBLE saturates at 255 rather than wrapping at a byte")
+T.eq(rateHandedToVanilla({ grass = { rate = 0 } }), 0,
+  "a map with no wild encounters stays at rate 0")
+
+-- The vanilla link here always produces an encounter, so a nil result is
+-- proof the chain returned before ever reaching it.
+qolOptions.qol_encounter_rate = 0
+local forced = Runtime.call("encounter.roll", function()
+  return { species = "RATTATA", level = 3 }
+end, routeDef, encounterCtx)
+T.check(forced == nil, "NONE suppresses the encounter without rolling")
+qolOptions.qol_encounter_rate = false
 
 local oldDrawBox, oldFontDraw, oldFontWidth = Font.drawBox, Font.draw, Font.width
 local oldGetTime = love.timer.getTime

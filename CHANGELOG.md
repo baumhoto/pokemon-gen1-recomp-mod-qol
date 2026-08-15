@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.0
+
+### Added
+
+#### Random Battles
+
+- **RANDOM BATTLES:** Scales how often wild encounters start. **NORMAL** (the
+  default) is vanilla and changes nothing, **HALF** and **DOUBLE** scale the
+  map's own encounter rate, and **NONE** turns wild encounters off entirely.
+- Gen 1 only for now. Gold runs its encounter-rate check before the hook this
+  rides, so the row is hidden there rather than shipped half-working.
+
 ## v1.3.0
 
 ### Tested compatibility
