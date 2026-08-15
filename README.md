@@ -11,7 +11,7 @@ Can be toggled individually.
 ## Installation
 
 Download the newest `.zip` from the
-[GitHub Releases page](https://github.com/unxpected-uxp/pokemon-gen1-recomp-mod-qol/releases/latest),
+[GitHub Releases page](https://github.com/baumhoto/pokemon-gen1-recomp-mod-qol/releases/latest),
 then use **MODS → Import mod .zip** in the game.
 
 For a manual installation, extract the archive into a `quality_of_life` folder

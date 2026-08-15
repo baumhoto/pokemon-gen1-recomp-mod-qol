@@ -2,7 +2,7 @@
   "id": "quality_of_life",
   "name": "Quality of Life",
   "version": "1.4.0",
-  "github": "unxpected-uxp/pokemon-gen1-recomp-mod-qol",
+  "github": "baumhoto/pokemon-gen1-recomp-mod-qol",
   "api": 2,
   "games": ["gen1", "gen2"],
   "entry": "main.lua",
